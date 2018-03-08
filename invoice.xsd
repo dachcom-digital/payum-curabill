@@ -1,0 +1,751 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+		   targetNamespace="http://middlelayer.curabill.ch/xsd/invoice" 
+		   xmlns="http://middlelayer.curabill.ch/xsd/invoice" 
+		   elementFormDefault="qualified">
+
+	<xs:element name="invoice">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="invoiceHeader" type="InvoiceHeader" minOccurs="1" maxOccurs="1" />
+				<xs:sequence>
+					<xs:element name="invoiceItem" type="InvoiceItem" minOccurs="1" maxOccurs="unbounded" />
+				</xs:sequence>
+				<xs:element name="invoiceFooter" type="InvoiceFooter" minOccurs="1" maxOccurs="1" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:complexType name="InvoiceHeader">
+		<xs:sequence>
+			<xs:element name="basicInformation" type="BasicInformation" />
+			<xs:element name="invoicingParty" type="InvoicingParty" minOccurs="0" maxOccurs="1" />
+			<xs:element name="billtoParty" type="BillToParty" />
+			
+			<xs:element name="deliveryInformation" type="DeliveryInformation" minOccurs="1" maxOccurs="1"/>
+			<xs:element name="paymentInformation" type="PaymentInformation" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="additionalInformation" type="AdditionalInformation" minOccurs="0" maxOccurs="unbounded"/>
+
+			<xs:element name="instalment" type="InstalmentPayment" minOccurs="0" maxOccurs="1" />
+			
+		</xs:sequence>
+	</xs:complexType>
+
+
+	<xs:complexType name="InvoiceItem">
+		<xs:sequence>
+			<xs:element name="positionReference" type="PositionReference" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="productQuantityInformation" type="ProductQuantityInformation" />
+			<xs:element name="invoiceItemPriceModifications" type="InvoiceItemPriceModifications" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="priceInformation" type="PriceInformation" />
+			<xs:element name="deliveryInformation" type="DeliveryInformationPosition" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="additionalInformation" type="AdditionalInformationPosition" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="InvoiceFooter">
+		<xs:sequence>
+			<xs:element name="vatInformation" type="VatInformation" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="invoiceTotals" type="InvoiceTotals" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<!--Hierarchieebene 2: Typdefinitionen als Grundlage der Hierarchieebene 1.-->
+	<!--BASISINFORMATION-->
+	<xs:complexType name="BasicInformation">
+		<xs:sequence>
+			<xs:element name="documentType" type="DocumentType"/>
+			<xs:element name="documentNumber" type="xs:positiveInteger" />
+			<xs:element name="documentDate" type="xs:date" />
+			<xs:element name="documentCurrency" type="xs:string" fixed="CHF"/>
+			<xs:element name="orderNumberCustomer" type="xs:string" minOccurs="0" maxOccurs="1" />
+			<xs:element name="contractIdentification" type="xs:string" minOccurs="0" maxOccurs="1" />
+			<xs:element name="invoiceReference" type="xs:string" minOccurs="0" maxOccurs="1" />
+			<xs:element name="invoiceDate" type="xs:date" minOccurs="0" maxOccurs="1" />
+			<xs:element name="invoiceDeliveryMethod" type="InvoiceDeliveryMethod" minOccurs="0" maxOccurs="1" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:simpleType name="DocumentType">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="Invoice" />
+			<xs:enumeration value="Curapay" />
+			<xs:enumeration value="Instalment" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="InvoiceDeliveryMethod">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="Email" />
+			<xs:enumeration value="Postal" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!--RECHNUNGSSTELLER-->
+	<xs:complexType name="InvoicingParty">
+		<xs:sequence>
+			<xs:element name="providerNumber" type="ProviderNumber" minOccurs="0" maxOccurs="1" />
+			<xs:element name="customerSystemIdentification" type="xs:string" />
+			<xs:element name="vatNumber" type="VatNumber" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="companyAddress" type="CompanyAddress" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="organisationUnitName" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="contactPerson" type="ContactPerson" minOccurs="0" maxOccurs="1"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:simpleType name="ProviderNumber">
+		<xs:restriction base="xs:positiveInteger">
+			<xs:maxInclusive value="9999"></xs:maxInclusive>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="VatNumber">
+		<xs:restriction base="xs:string">
+			<!--6 Ziffern (CH) oder zwei Grossbuchstaben gefolgt von maximal 12 Grossbuchstaben oder 
+			Ziffern (VATIN, vgl. http://en.wikipedia.org/wiki/Value_added_tax_identification_number).-->
+			<xs:pattern value="([0-9]{6})|([A-Z][A-Z]([A-Z0-9])*)"/>
+			<xs:maxLength value="14" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!--Arzt-Rechnung 4.0 vs. SwissDIGIN-->
+	<xs:complexType name="CompanyAddress">
+		<xs:sequence>
+			<xs:element name="companyName" type="Name" />
+			<xs:element name="divisionClerk" type="xs:string" minOccurs="0" maxOccurs="3"/>
+			<xs:element name="postbox" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="street" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="zip" type="Zip" />
+			<xs:element name="city" type="xs:string" />
+			<xs:element name="country" type="Country" />
+			<xs:element name="region" type="Region" minOccurs="0" maxOccurs="1"/>
+			<!--Erweiterungen gegenüber SwissDIGIN-->
+			<xs:element name="phoneNumber" type="PhoneNumber" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="faxNumber" type="PhoneNumber" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="mobileNumber" type="PhoneNumber" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="email" type="Email" minOccurs="0" maxOccurs="1"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<!--Arzt-Rechnung 4.0 vs. SwissDIGIN-->
+	<xs:complexType name="PrivateAddress">
+		<xs:sequence>
+			<xs:element name="salutation" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="title" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="lastname" type="Name"/>
+			<xs:element name="firstname" type="Name" minOccurs="1" maxOccurs="1"/>
+			<xs:element name="postbox" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="street" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="zip" type="Zip" />
+			<xs:element name="city" type="xs:string" />
+			<xs:element name="country" type="Country" />
+			<xs:element name="region" type="Region" minOccurs="0" maxOccurs="1"/>
+			<!--Erweiterungen gegenüber SwissDIGIN-->
+			<xs:element name="phoneNumber" type="PhoneNumber" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="faxNumber" type="PhoneNumber" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="mobileNumber" type="PhoneNumber" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="email" type="Email" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="birthday" type="xs:date" minOccurs="1" maxOccurs="1" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:simpleType name="Name">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="2" />
+			<xs:maxLength value="100" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="Percent">
+		<xs:restriction base="xs:decimal">
+			<xs:fractionDigits value="4" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="Guid">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="Zip">
+		<xs:restriction base="xs:string">
+			<!-- Four chars (>1000) (CH) or max 9 alphanumeric chars-->
+			<xs:pattern value="[1-9][0-9]{3}|[0-9A-Z]*"/>
+			<xs:maxLength value="9" />
+		</xs:restriction>
+	</xs:simpleType>
+
+
+	<xs:simpleType name="Region">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="9" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:complexType name="ContactPerson">
+		<xs:sequence>
+			<xs:element name="firstname" type="xs:string" />
+			<xs:element name="lastname" type="xs:string" />
+			<xs:element name="phoneNumber" type="PhoneNumber" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="email" type="Email" minOccurs="0" maxOccurs="1"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:simpleType name="PhoneNumber">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="[+0-9()/ ][()/ 0-9]*"/>
+			<xs:minLength value="7" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="Email">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="[A-Za-z0-9_]+([-+.'][A-Za-z0-9_]+)*@[A-Za-z0-9_]+([-.][A-Za-z0-9_]+)*\.[A-Za-z0-9_]+([-.][A-Za-z0-9_]+)*"/>
+			<xs:minLength value="7" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!--RECHNUNGSEMPFAENGER-->
+	<xs:complexType name="BillToParty">
+		<xs:sequence>
+			<xs:element name="customerId" type="xs:int" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="language" type="Language" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="customerNumberAsInSupplierSystem" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="vatNumber" type="VatNumber" minOccurs="0" maxOccurs="1"/>
+			<xs:choice>
+				<xs:element name="companyAddress" type="CompanyAddress"/>
+				<xs:element name="privateAddress" type="PrivateAddress"/>
+			</xs:choice>
+			<xs:element name="identificationOrganisationUnit" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="organisationUnitName" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="contactIdentification" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="additionalInformationForContact" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="checkAge" type="xs:boolean" minOccurs="0" maxOccurs="1" />
+			<xs:element name="identityCardNumber" type="xs:string" minOccurs="0" maxOccurs="1" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<!--LIEFERINFORMATIONEN-->
+	<xs:complexType name="DeliveryInformation">
+		<xs:sequence>
+			<xs:element name="deliveryDate" type="xs:date" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="startServiceProviding" type="xs:date" minOccurs="0" maxOccurs="1"/>
+			<xs:choice minOccurs="1" maxOccurs="1">
+				<xs:element name="companyAddress" type="CompanyAddress"/>
+				<xs:element name="privateAddress" type="PrivateAddress"/>
+			</xs:choice>
+			<xs:element name="organisationUnitName" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="fulfilmentReference" type="xs:string" minOccurs="0" maxOccurs="1"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<!--ZAHLUNGSINFORMATIONEN-->
+	<xs:complexType name="PaymentInformation">
+		<xs:sequence>
+			<xs:element name="paymentConditions" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="termOfPayment" type="xs:positiveInteger" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="dueDate" type="xs:date" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="discountForPromptPaymentRate" type="xs:decimal" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="discountForPromptPaymentExpireDate" type="xs:date" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="esrNumber" type="EsrNumber" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="esrParticipationNumber" type="EsrParticipationNumber" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="bankClearingNumber" type="BankClearingNumber" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="bankName" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="branch" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="country" type="Country" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="bankAccountNumber" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="payeeName" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:choice minOccurs="0" maxOccurs="1">
+				<xs:element name="companyAddress" type="CompanyAddress"/>
+				<xs:element name="privateAddress" type="PrivateAddress"/>
+			</xs:choice>
+			<xs:element name="ibanNumber" type="IbanNumber" minOccurs="0" maxOccurs="1"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:simpleType name="EsrNumber">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="[0-9]*"/>
+			<xs:length value="27"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="EsrParticipationNumber">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="[0-9]*"/>
+			<xs:length value="9"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="BankClearingNumber">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="[0-9]*"/>
+			<xs:minLength value="3"/>
+			<xs:maxLength value="4"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="IbanNumber">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="[A-Z][A-Z][0-9]*"/>
+			<xs:length value="21"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!--ZUSATZINFORMATIONEN-->
+	<xs:complexType name="AdditionalInformation">
+		<xs:sequence>
+			<xs:element name="accountingType" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="accountingTypeValue" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="enclosureLink" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="freeTextAnnotation" type="FreeTextAnnotation" minOccurs="0" maxOccurs="1"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:simpleType name="FreeTextAnnotation">
+		<xs:restriction base="xs:string">
+			<!--Length limitation required by print layout: ensure max. 3 lines of text with 82 chars each.-->
+			<xs:maxLength value="246"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!--PositionReference-->
+	<xs:complexType name="PositionReference">
+		<xs:sequence>
+			<xs:element name="positionType" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="orderPositionNumberBuyer" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="orderNumber" type="xs:string" minOccurs="0" maxOccurs="1"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<!--ARTIKEL- UND MENGENINFORMATIONEN-->
+	<xs:complexType name="ProductQuantityInformation">
+		<xs:sequence>
+			<xs:element name="skuSupplier" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="skuBuyer" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="skuDefault" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="description" type="xs:string" />
+			<xs:element name="additionalInformation" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="quantityUnit" type="xs:string" />
+			<xs:element name="pricePerUnit" type="xs:positiveInteger" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="invoicedQuantity" type="Quantity" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:simpleType name="Quantity">
+		<xs:restriction base="xs:decimal">
+			<xs:minInclusive value="0"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:complexType name="InvoiceItemPriceModifications">
+		<xs:sequence>
+			<xs:element name="modificationCode" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="modificationDescription" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="modificationCalculationBase" type="Amount" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="modificationQuantity" type="xs:decimal" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="modificationQuantityUnit" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="modificationAmount" type="Amount" minOccurs="0" maxOccurs="1"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="PriceInformation">
+		<xs:sequence>
+			<xs:element name="invoicedPricePerUnitExclVat" type="Amount" />
+			<xs:element name="invoicedPricePerUnitInclVat" type="Amount" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="vatRate" type="VatRate" />
+			<xs:element name="reasonForTaxReduction" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="taxBaseAmount" type="Amount" />
+			<xs:element name="taxAmount" type="Amount" />
+			<xs:element name="totalAmount" type="Amount" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:simpleType name="Amount">
+		<xs:restriction base="xs:decimal">
+			<xs:fractionDigits value="2" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="VatRate">
+		<xs:restriction base="xs:decimal">
+			<xs:fractionDigits value="1" />
+			<xs:minInclusive value="0.0" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!--LIEFERINFORMATIONEN InvoiceItem-->
+	<xs:complexType name="DeliveryInformationPosition">
+		<xs:sequence>
+			<xs:element name="deliveryDate" type="xs:date" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="startServiceProviding" type="xs:date" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="fulfilmentReference" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="deliveryInformation" type="xs:string" minOccurs="0" maxOccurs="1"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="AdditionalInformationPosition">
+		<xs:sequence>
+			<xs:element name="accountingType" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="accountingTypeValue" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="enclosureLink" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="freeTextAnnotation" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="contactIdentification" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="additionalInformationForContact" type="xs:string" minOccurs="0" maxOccurs="1"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="VatInformation">
+		<xs:sequence>
+			<xs:element name="vatRate" type="VatRate" />
+			<xs:element name="taxBaseAmount" type="Amount" />
+			<xs:element name="taxAmount" type="Amount" />
+			<xs:element name="reasonForTaxReduction" type="xs:string" minOccurs="0" maxOccurs="1"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="InvoiceTotals">
+		<xs:sequence>
+			<!--Erweiterung gegenüber SwissDIGIN-->
+			<xs:element name="refundFlat" type="Amount" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="orderTotalWithoutTax" type="Amount" />
+			<xs:element name="orderTotalWithTax" type="Amount" />
+			<xs:element name="instalmentTotalAmount" type="Amount" minOccurs="0" maxOccurs="1" />
+			<xs:element name="roundingDifference" type="RoundingDifference" minOccurs="0" maxOccurs="1"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:simpleType name="RoundingDifference">
+		<xs:restriction base="Amount">
+			<xs:maxInclusive value="0.04"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="Language">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="de" />
+			<xs:enumeration value="fr" />
+			<xs:enumeration value="it" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="Country">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="AF" />
+			<xs:enumeration value="AX" />
+			<xs:enumeration value="AL" />
+			<xs:enumeration value="DZ" />
+			<xs:enumeration value="AS" />
+			<xs:enumeration value="AD" />
+			<xs:enumeration value="AO" />
+			<xs:enumeration value="AI" />
+			<xs:enumeration value="AQ" />
+			<xs:enumeration value="AG" />
+			<xs:enumeration value="AR" />
+			<xs:enumeration value="AM" />
+			<xs:enumeration value="AW" />
+			<xs:enumeration value="AU" />
+			<xs:enumeration value="AT" />
+			<xs:enumeration value="AZ" />
+			<xs:enumeration value="BS" />
+			<xs:enumeration value="BH" />
+			<xs:enumeration value="BD" />
+			<xs:enumeration value="BB" />
+			<xs:enumeration value="BY" />
+			<xs:enumeration value="BE" />
+			<xs:enumeration value="BZ" />
+			<xs:enumeration value="BJ" />
+			<xs:enumeration value="BM" />
+			<xs:enumeration value="BT" />
+			<xs:enumeration value="BO" />
+			<xs:enumeration value="BA" />
+			<xs:enumeration value="BW" />
+			<xs:enumeration value="BV" />
+			<xs:enumeration value="BR" />
+			<xs:enumeration value="IO" />
+			<xs:enumeration value="BN" />
+			<xs:enumeration value="BG" />
+			<xs:enumeration value="BF" />
+			<xs:enumeration value="BI" />
+			<xs:enumeration value="KH" />
+			<xs:enumeration value="CM" />
+			<xs:enumeration value="CA" />
+			<xs:enumeration value="CV" />
+			<xs:enumeration value="KY" />
+			<xs:enumeration value="CF" />
+			<xs:enumeration value="TD" />
+			<xs:enumeration value="CL" />
+			<xs:enumeration value="CN" />
+			<xs:enumeration value="CX" />
+			<xs:enumeration value="CC" />
+			<xs:enumeration value="CO" />
+			<xs:enumeration value="KM" />
+			<xs:enumeration value="CG" />
+			<xs:enumeration value="CD" />
+			<xs:enumeration value="CK" />
+			<xs:enumeration value="CR" />
+			<xs:enumeration value="CI" />
+			<xs:enumeration value="HR" />
+			<xs:enumeration value="CU" />
+			<xs:enumeration value="CY" />
+			<xs:enumeration value="CZ" />
+			<xs:enumeration value="DK" />
+			<xs:enumeration value="DJ" />
+			<xs:enumeration value="DM" />
+			<xs:enumeration value="DO" />
+			<xs:enumeration value="EC" />
+			<xs:enumeration value="EG" />
+			<xs:enumeration value="SV" />
+			<xs:enumeration value="GQ" />
+			<xs:enumeration value="ER" />
+			<xs:enumeration value="EE" />
+			<xs:enumeration value="ET" />
+			<xs:enumeration value="FK" />
+			<xs:enumeration value="FO" />
+			<xs:enumeration value="FJ" />
+			<xs:enumeration value="FI" />
+			<xs:enumeration value="FR" />
+			<xs:enumeration value="GF" />
+			<xs:enumeration value="PF" />
+			<xs:enumeration value="TF" />
+			<xs:enumeration value="GA" />
+			<xs:enumeration value="GM" />
+			<xs:enumeration value="GE" />
+			<xs:enumeration value="DE" />
+			<xs:enumeration value="GH" />
+			<xs:enumeration value="GI" />
+			<xs:enumeration value="GR" />
+			<xs:enumeration value="GL" />
+			<xs:enumeration value="GD" />
+			<xs:enumeration value="GP" />
+			<xs:enumeration value="GU" />
+			<xs:enumeration value="GT" />
+			<xs:enumeration value="GG" />
+			<xs:enumeration value="GN" />
+			<xs:enumeration value="GW" />
+			<xs:enumeration value="GY" />
+			<xs:enumeration value="HT" />
+			<xs:enumeration value="HM" />
+			<xs:enumeration value="VA" />
+			<xs:enumeration value="HN" />
+			<xs:enumeration value="HK" />
+			<xs:enumeration value="HU" />
+			<xs:enumeration value="IS" />
+			<xs:enumeration value="IN" />
+			<xs:enumeration value="ID" />
+			<xs:enumeration value="IR" />
+			<xs:enumeration value="IQ" />
+			<xs:enumeration value="IE" />
+			<xs:enumeration value="IM" />
+			<xs:enumeration value="IL" />
+			<xs:enumeration value="IT" />
+			<xs:enumeration value="JM" />
+			<xs:enumeration value="JP" />
+			<xs:enumeration value="JE" />
+			<xs:enumeration value="JO" />
+			<xs:enumeration value="KZ" />
+			<xs:enumeration value="KE" />
+			<xs:enumeration value="KI" />
+			<xs:enumeration value="KP" />
+			<xs:enumeration value="KR" />
+			<xs:enumeration value="KW" />
+			<xs:enumeration value="KG" />
+			<xs:enumeration value="LA" />
+			<xs:enumeration value="LV" />
+			<xs:enumeration value="LB" />
+			<xs:enumeration value="LS" />
+			<xs:enumeration value="LR" />
+			<xs:enumeration value="LY" />
+			<xs:enumeration value="LI" />
+			<xs:enumeration value="LT" />
+			<xs:enumeration value="LU" />
+			<xs:enumeration value="MO" />
+			<xs:enumeration value="MK" />
+			<xs:enumeration value="MG" />
+			<xs:enumeration value="MW" />
+			<xs:enumeration value="MY" />
+			<xs:enumeration value="MV" />
+			<xs:enumeration value="ML" />
+			<xs:enumeration value="MT" />
+			<xs:enumeration value="MH" />
+			<xs:enumeration value="MQ" />
+			<xs:enumeration value="MR" />
+			<xs:enumeration value="MU" />
+			<xs:enumeration value="YT" />
+			<xs:enumeration value="MX" />
+			<xs:enumeration value="FM" />
+			<xs:enumeration value="MD" />
+			<xs:enumeration value="MC" />
+			<xs:enumeration value="MN" />
+			<xs:enumeration value="ME" />
+			<xs:enumeration value="MS" />
+			<xs:enumeration value="MA" />
+			<xs:enumeration value="MZ" />
+			<xs:enumeration value="MM" />
+			<xs:enumeration value="NA" />
+			<xs:enumeration value="NR" />
+			<xs:enumeration value="NP" />
+			<xs:enumeration value="NL" />
+			<xs:enumeration value="AN" />
+			<xs:enumeration value="NC" />
+			<xs:enumeration value="NZ" />
+			<xs:enumeration value="NI" />
+			<xs:enumeration value="NE" />
+			<xs:enumeration value="NG" />
+			<xs:enumeration value="NU" />
+			<xs:enumeration value="NF" />
+			<xs:enumeration value="MP" />
+			<xs:enumeration value="NO" />
+			<xs:enumeration value="OM" />
+			<xs:enumeration value="PK" />
+			<xs:enumeration value="PW" />
+			<xs:enumeration value="PS" />
+			<xs:enumeration value="PA" />
+			<xs:enumeration value="PG" />
+			<xs:enumeration value="PY" />
+			<xs:enumeration value="PE" />
+			<xs:enumeration value="PH" />
+			<xs:enumeration value="PN" />
+			<xs:enumeration value="PL" />
+			<xs:enumeration value="PT" />
+			<xs:enumeration value="PR" />
+			<xs:enumeration value="QA" />
+			<xs:enumeration value="RE" />
+			<xs:enumeration value="RO" />
+			<xs:enumeration value="RU" />
+			<xs:enumeration value="RW" />
+			<xs:enumeration value="BL" />
+			<xs:enumeration value="SH" />
+			<xs:enumeration value="KN" />
+			<xs:enumeration value="LC" />
+			<xs:enumeration value="MF" />
+			<xs:enumeration value="PM" />
+			<xs:enumeration value="VC" />
+			<xs:enumeration value="WS" />
+			<xs:enumeration value="SM" />
+			<xs:enumeration value="ST" />
+			<xs:enumeration value="SA" />
+			<xs:enumeration value="SN" />
+			<xs:enumeration value="RS" />
+			<xs:enumeration value="SC" />
+			<xs:enumeration value="SL" />
+			<xs:enumeration value="SG" />
+			<xs:enumeration value="SK" />
+			<xs:enumeration value="SI" />
+			<xs:enumeration value="SB" />
+			<xs:enumeration value="SO" />
+			<xs:enumeration value="ZA" />
+			<xs:enumeration value="GS" />
+			<xs:enumeration value="ES" />
+			<xs:enumeration value="LK" />
+			<xs:enumeration value="SD" />
+			<xs:enumeration value="SR" />
+			<xs:enumeration value="SJ" />
+			<xs:enumeration value="SZ" />
+			<xs:enumeration value="SE" />
+			<xs:enumeration value="CH" />
+			<xs:enumeration value="SY" />
+			<xs:enumeration value="TW" />
+			<xs:enumeration value="TJ" />
+			<xs:enumeration value="TZ" />
+			<xs:enumeration value="TH" />
+			<xs:enumeration value="TL" />
+			<xs:enumeration value="TG" />
+			<xs:enumeration value="TK" />
+			<xs:enumeration value="TO" />
+			<xs:enumeration value="TT" />
+			<xs:enumeration value="TN" />
+			<xs:enumeration value="TR" />
+			<xs:enumeration value="TM" />
+			<xs:enumeration value="TC" />
+			<xs:enumeration value="TV" />
+			<xs:enumeration value="UG" />
+			<xs:enumeration value="UA" />
+			<xs:enumeration value="AE" />
+			<xs:enumeration value="GB" />
+			<xs:enumeration value="US" />
+			<xs:enumeration value="UM" />
+			<xs:enumeration value="UY" />
+			<xs:enumeration value="UZ" />
+			<xs:enumeration value="VU" />
+			<xs:enumeration value="VE" />
+			<xs:enumeration value="VN" />
+			<xs:enumeration value="VG" />
+			<xs:enumeration value="VI" />
+			<xs:enumeration value="WF" />
+			<xs:enumeration value="EH" />
+			<xs:enumeration value="YE" />
+			<xs:enumeration value="ZM" />
+			<xs:enumeration value="ZW" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="CreationType">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="Immediately" />
+			<xs:enumeration value="Deferred" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	
+	<xs:complexType name="InstalmentPayment" >
+		<xs:sequence>
+			<xs:element name="instalmentPlanOption" type="InstalmentPlanOption" />
+		</xs:sequence>
+		<xs:attribute name="token" type="Guid" use="required" />
+	</xs:complexType>
+
+	<xs:complexType name="InstalmentPlanOption">
+		<xs:sequence>
+			<xs:element name="calculation" type="Calculation" minOccurs="1" maxOccurs="1" />
+			<xs:element name="instalments" type="Instalments" minOccurs="1" maxOccurs="1" />
+		</xs:sequence>
+		<xs:attribute name="id" type="OneBasedIndex" use="required" />
+	</xs:complexType>
+
+	<xs:complexType name="Calculation">
+		<xs:attribute name="netAmount" type="Amount" use="required" />
+		<xs:attribute name="totalAmount" type="Amount" use="required" />
+		<xs:attribute name="interestAmount" type="Amount" use="required" />
+		<xs:attribute name="feeAmount" type="Amount" use="optional" />
+		<xs:attribute name="effectiveAnnualInterest" type="Percent" use="required" />
+		<xs:attribute name="durationInMonths" type="xs:nonNegativeInteger" use="required" />
+		<xs:attribute name="numberOfInstalments" type="xs:nonNegativeInteger" use="required" />
+	</xs:complexType>
+
+	<xs:complexType name="Instalments">
+		<xs:sequence>
+			<xs:element name="instalment" type="Instalment" minOccurs="1" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="Instalment">
+		<xs:attribute name="instalmentNumber" type="OneBasedIndex" use="required" />
+		<xs:attribute name="amount" type="Amount" use="required" />
+		<xs:attribute name="dueDate" type="xs:date" use="required" />
+		<xs:attribute name="templateType" type="InstalmentTemplate" use="required" />
+	</xs:complexType>
+
+	<xs:simpleType name="InstalmentTemplate">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="First">
+			</xs:enumeration>
+			<xs:enumeration value="Second">
+			</xs:enumeration>
+			<xs:enumeration value="Instalment">
+			</xs:enumeration>
+		</xs:restriction>
+	</xs:simpleType>
+	
+
+	<xs:simpleType name="OneBasedIndex">
+		<xs:restriction base="xs:positiveInteger">
+			<xs:minInclusive value="1"></xs:minInclusive>
+		</xs:restriction>
+	</xs:simpleType>
+	
+	
+	
+
+</xs:schema>
