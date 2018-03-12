@@ -37,6 +37,14 @@ class InvoiceTransformer extends Generic
     }
 
     /**
+     * @return string
+     */
+    public function getDocumentType(): string
+    {
+        return $this->documentType;
+    }
+
+    /**
      * @param array $invoiceHeader
      */
     public function setInvoiceHeader(array $invoiceHeader)
@@ -88,7 +96,7 @@ class InvoiceTransformer extends Generic
                 'identificationOrganisationUnit'   => '',
                 'organisationUnitName'             => '',
                 'additionalInformationForContact'  => '',
-                'checkAge'                         => false,
+                'checkAge'                         => 'false',
                 'identityCardNumber'               => '',
             ],
             'deliveryInformation' => [
@@ -130,7 +138,7 @@ class InvoiceTransformer extends Generic
     {
         return !empty($this->invoiceItems) ? $this->invoiceItems : [
             [
-                'positionReference'          => null,
+                'positionReference'          => '',
                 'productQuantityInformation' => [
                     'description'      => '',
                     'quantityUnit'     => '',
@@ -143,7 +151,7 @@ class InvoiceTransformer extends Generic
                     'taxAmount'                   => '',
                     'totalAmount'                 => '',
                 ],
-                'additionalInformation'      => null,
+                'additionalInformation'      => '',
 
             ]
         ];

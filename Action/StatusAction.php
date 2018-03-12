@@ -18,8 +18,28 @@ class StatusAction implements ActionInterface
     {
         RequestNotSupportedException::assertSupports($this, $request);
 
-        $model = new ArrayObject($request->getModel());
+        $details = ArrayObject::ensureArrayObject($request->getModel());
 
+        if ($details['transaction_processed'] === true) {
+            $request->markCaptured();
+            return;
+        }
+        if ($details['transaction_success'] === true) {
+            $request->markAuthorized();
+            return;
+        }
+        if ($details['transaction_refused'] === true) {
+            $request->markFailed();
+            return;
+        }
+        if ($details['transaction_error'] === true) {
+            $request->markFailed();
+            return;
+        }
+        if ($details['transaction_cancel'] === true) {
+            $request->markCanceled();
+            return;
+        }
     }
 
     /**

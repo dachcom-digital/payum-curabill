@@ -3,10 +3,13 @@
 namespace DachcomDigital\Payum\Curabill;
 
 use DachcomDigital\Payum\Curabill\Action\Api\Transformer\InvoiceTransformerAction;
+use DachcomDigital\Payum\Curabill\Action\AuthorizeAction;
 use DachcomDigital\Payum\Curabill\Action\CaptureAction;
 use DachcomDigital\Payum\Curabill\Action\StatusAction;
+use DachcomDigital\Payum\Curabill\Action\Api\ProcessAction;
 use Payum\Core\Bridge\Spl\ArrayObject;
 use Payum\Core\GatewayFactory;
+use Payum\Sofort\Action\SyncAction;
 
 class CurabillGatewayFactory extends GatewayFactory
 {
@@ -20,10 +23,13 @@ class CurabillGatewayFactory extends GatewayFactory
             'payum.factory_name'  => 'curabill',
             'payum.factory_title' => 'Curabill E-Commerce',
 
-            'payum.action.capture' => new CaptureAction(),
-            'payum.action.status'  => new StatusAction(),
+            'payum.action.capture'   => new CaptureAction(),
+            'payum.action.status'    => new StatusAction(),
+            'payum.action.authorize' => new AuthorizeAction(),
+            'payum.action.sync'      => new SyncAction(),
 
-            'payum.action.api.invoice_transformer'  => new InvoiceTransformerAction(),
+            'payum.action.api.process'             => new ProcessAction(),
+            'payum.action.api.invoice_transformer' => new InvoiceTransformerAction(),
 
         ]);
 

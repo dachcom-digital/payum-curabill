@@ -33,8 +33,10 @@ class Api
         'environment'        => self::TEST,
         'username'           => null,
         'transactionToken'   => null,
+        'responseToken'      => null,
         'paymentMethod'      => null,
         'shopCode'           => null,
+        'uncertainProfiles'  => null,
         'optionalParameters' => []
     ];
 
@@ -52,6 +54,7 @@ class Api
         $options->validateNotEmpty([
             'username',
             'transactionToken',
+            'responseToken',
             'paymentMethod',
             'shopCode',
         ]);
@@ -73,6 +76,10 @@ class Api
         return $this->options['paymentMethod'];
     }
 
+    /**
+     * @param InvoiceTransformer $invoiceTransformer
+     * @return mixed
+     */
     public function generateInvoiceXml(InvoiceTransformer $invoiceTransformer)
     {
         $xmlGenerator = new XmlGenerator();
@@ -85,11 +92,21 @@ class Api
      */
     public function getOffSiteUrl()
     {
-        if ($this->options['sandbox'] === false) {
-            return 'https://prod.middlelayer.curabill.ch';
+        $path = '';
+
+        if ($this->options['paymentMethod'] === 'invoice') {
+            $path = '/services/invoice/process';
+        } elseif ($this->options['paymentMethod'] === 'curapay') {
+            $path = '/services/invoice/process';
+        } elseif ($this->options['paymentMethod'] === 'instalment') {
+            $path = '/services/instalment/get-plan';
         }
 
-        return 'https://int.middlelayer.curabill.ch';
+        if ($this->options['sandbox'] === false) {
+            return 'https://prod.middlelayer.curabill.ch' . $path;
+        }
+
+        return 'https://int.middlelayer.curabill.ch' . $path;
     }
 
     /**
@@ -99,6 +116,8 @@ class Api
      */
     public function prepareOffSitePayment(array $params)
     {
+        unset($params['birthdate'], $params['deliveryMethod']);
+
         $this->addGlobalParams($params);
         return $params;
     }
@@ -112,7 +131,7 @@ class Api
             'payment_method'    => $this->options['paymentMethod'],
             'transaction_token' => $this->options['transactionToken'],
             'username'          => $this->options['username'],
-            'shop_code'         => $this->options['shopCode'],
+            'shop_code'         => $this->options['shopCode']
         ];
 
         $params = array_merge($systemParams, $this->options['optionalParameters'], $params);
@@ -128,17 +147,20 @@ class Api
      */
     public function createShaHash(array $data, $token)
     {
-        uksort($data, 'strnatcasecmp');
+        ksort($data);
         $hashParts = [];
 
         foreach ($data as $key => $value) {
+
             $str = $this->stringValue($value);
-            if ($str == '' || $key == 'signature' || $key == 'transactionToken') {
+            if ($str == '') {
                 continue;
             }
-            $hashParts[] = strtolower($key) . '=' . $str . $token;
+
+            $hashParts[] = strtolower($key) . '=' . $str;
         }
-        return strtolower(hash('sha512', implode('', $hashParts)));
+
+        return hash_hmac('sha512', implode('', $hashParts), $token);
     }
 
     /**
