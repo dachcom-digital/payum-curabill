@@ -21,7 +21,7 @@ class StatusAction implements ActionInterface
         $details = ArrayObject::ensureArrayObject($request->getModel());
 
         if ($details['transaction_processed'] === true) {
-            $request->markCaptured();
+            $request->markAuthorized();
             return;
         }
         if ($details['transaction_success'] === true) {

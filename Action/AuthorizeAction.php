@@ -51,8 +51,6 @@ class AuthorizeAction implements ActionInterface, ApiAwareInterface, GatewayAwar
 
         $details = ArrayObject::ensureArrayObject($request->getModel());
 
-        \Pimcore\Logger::log('dings: ' . 'authorize execute');
-
         $httpRequest = new GetHttpRequest();
         $this->gateway->execute($httpRequest);
 
@@ -68,8 +66,6 @@ class AuthorizeAction implements ActionInterface, ApiAwareInterface, GatewayAwar
                 $details['transaction_error'] = true;
             }
             $details['transaction_message'] = $postParams['message'];
-
-            \Pimcore\Logger::log('dings: ' . $details['transaction_message']);
 
             $this->gateway->execute(new Process($details));
         }

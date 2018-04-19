@@ -25,18 +25,18 @@ class Api
 
     const PRODUCTION = 'production';
 
-    protected $signatureParams = [
+    const PROCESSING_IMMEDIATE = 'immediate';
 
-    ];
+    const PROCESSING_DEFERRED = 'deferred';
 
     protected $options = [
         'environment'        => self::TEST,
         'username'           => null,
         'transactionToken'   => null,
         'responseToken'      => null,
-        'paymentMethod'      => null,
+        'paymentMethod'      => 'invoice',
         'shopCode'           => null,
-        'uncertainProfiles'  => null,
+        'processingType'     => self::PROCESSING_IMMEDIATE,
         'optionalParameters' => []
     ];
 
@@ -89,17 +89,33 @@ class Api
 
     /**
      * @return string
+     * @throws \Exception
+     */
+    public function getProcessingType()
+    {
+        return $this->options['processingType'];
+    }
+
+    /**
+     * @return string
+     * @throws \Exception
      */
     public function getOffSiteUrl()
     {
         $path = '';
 
+        if ($this->options['processingType'] === self::PROCESSING_IMMEDIATE) {
+            $endPoint = 'process';
+        } elseif ($this->options['processingType'] === self::PROCESSING_DEFERRED) {
+            $endPoint = 'capture';
+        } else {
+            throw new \Exception('invalid processtype. valid types: immediate ore deferred');
+        }
+
         if ($this->options['paymentMethod'] === 'invoice') {
-            $path = '/services/invoice/process';
+            $path = '/services/invoice/' . $endPoint;
         } elseif ($this->options['paymentMethod'] === 'curapay') {
-            $path = '/services/invoice/process';
-        } elseif ($this->options['paymentMethod'] === 'instalment') {
-            $path = '/services/instalment/get-plan';
+            $path = '/services/invoice/' . $endPoint;
         }
 
         if ($this->options['sandbox'] === false) {
@@ -129,7 +145,6 @@ class Api
     {
         $systemParams = [
             'payment_method'    => $this->options['paymentMethod'],
-            'transaction_token' => $this->options['transactionToken'],
             'username'          => $this->options['username'],
             'shop_code'         => $this->options['shopCode']
         ];

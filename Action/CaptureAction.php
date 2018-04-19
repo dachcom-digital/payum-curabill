@@ -12,6 +12,7 @@ use Payum\Core\Exception\RequestNotSupportedException;
 use Payum\Core\Exception\UnsupportedApiException;
 use Payum\Core\GatewayAwareInterface;
 use Payum\Core\GatewayAwareTrait;
+use Payum\Core\Model\PaymentInterface;
 use Payum\Core\Reply\HttpPostRedirect;
 use Payum\Core\Request\Capture;
 use Payum\Core\Request\GetHttpRequest;
@@ -56,8 +57,7 @@ class CaptureAction implements ActionInterface, ApiAwareInterface, GatewayAwareI
 
         $model = ArrayObject::ensureArrayObject($request->getModel());
 
-        $httpRequest = new GetHttpRequest();
-        $this->gateway->execute($httpRequest);
+        $this->gateway->execute($httpRequest = new GetHttpRequest());
 
         if (isset($httpRequest->query['cancel'])) {
             $model['transaction_cancel'] = true;
@@ -69,6 +69,10 @@ class CaptureAction implements ActionInterface, ApiAwareInterface, GatewayAwareI
             $model['transaction_success'] = true;
             return;
         }
+
+        /** @var $payment PaymentInterface */
+        $payment = $request->getFirstModel();
+
 
         $transformCustomer = new InvoiceTransformer($request->getFirstModel());
         $transformCustomer->setDocumentType($this->api->getPaymentMethod());
@@ -90,7 +94,8 @@ class CaptureAction implements ActionInterface, ApiAwareInterface, GatewayAwareI
         $cancelUri = $cancelModifier->process($targetUri);
         $model['cancel_url'] = (string)$cancelUri;
 
-        $model['processing'] = 'immediate';
+        $model['transaction_token'] = $payment->getNumber();
+        $model['processing'] = $this->api->getProcessingType();
 
         $authorizeToken = $this->tokenFactory->createAuthorizeToken(
             $request->getToken()->getGatewayName(),
