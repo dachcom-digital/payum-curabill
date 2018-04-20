@@ -2,13 +2,13 @@
 
 namespace DachcomDigital\Payum\Curabill\Request\Api;
 
-use CoreShop\Bundle\PayumBundle\Model\PaymentSecurityToken;
 use Payum\Core\Request\Generic;
+use Payum\Core\Security\TokenInterface;
 
 class OffsiteAuthorize extends Generic
 {
     /**
-     * @var PaymentSecurityToken
+     * @var TokenInterface
      */
     protected $token;
 
@@ -20,13 +20,13 @@ class OffsiteAuthorize extends Generic
     /**
      * @param $token
      */
-    public function setToken(PaymentSecurityToken $token)
+    public function setToken(TokenInterface $token)
     {
         $this->token = $token;
     }
 
     /**
-     * @return PaymentSecurityToken
+     * @return TokenInterface
      */
     public function getToken()
     {
