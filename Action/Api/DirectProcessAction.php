@@ -1,28 +1,25 @@
 <?php
 
-namespace DachcomDigital\Payum\Curabill\Action;
+namespace DachcomDigital\Payum\Curabill\Action\Api;
 
 use DachcomDigital\Payum\Curabill\Api;
-use DachcomDigital\Payum\Curabill\Request\Api\Process;
+use DachcomDigital\Payum\Curabill\Exception\CurabillException;
+use DachcomDigital\Payum\Curabill\Request\Api\DirectProcess;
+use DachcomDigital\Payum\Curabill\Request\Api\Transformer\InvoiceTransformer;
 use Payum\Core\Action\ActionInterface;
 use Payum\Core\ApiAwareInterface;
-use Payum\Core\ApiAwareTrait;
 use Payum\Core\Bridge\Spl\ArrayObject;
 use Payum\Core\Exception\RequestNotSupportedException;
 use Payum\Core\Exception\UnsupportedApiException;
 use Payum\Core\GatewayAwareInterface;
 use Payum\Core\GatewayAwareTrait;
-use Payum\Core\Request\Authorize;
-use Payum\Core\Request\Capture;
-use Payum\Core\Request\GetHttpRequest;
+use Payum\Core\Model\PaymentInterface;
+use Payum\Core\Request\Sync;
 
-/**
- * @property Api $api
- */
-class AuthorizeAction implements ActionInterface, ApiAwareInterface, GatewayAwareInterface
+class DirectProcessAction implements ActionInterface, GatewayAwareInterface, ApiAwareInterface
 {
-    use ApiAwareTrait;
     use GatewayAwareTrait;
+    use CurabillAwareTrait;
 
     /**
      * @var Api
@@ -41,9 +38,8 @@ class AuthorizeAction implements ActionInterface, ApiAwareInterface, GatewayAwar
     }
 
     /**
-     * {@inheritDoc}
-     *
-     * @param Capture $request
+     * @param DirectProcess $request
+     * @throws \Payum\Core\Reply\ReplyInterface
      */
     public function execute($request)
     {
@@ -51,24 +47,22 @@ class AuthorizeAction implements ActionInterface, ApiAwareInterface, GatewayAwar
 
         $details = ArrayObject::ensureArrayObject($request->getModel());
 
-        $httpRequest = new GetHttpRequest();
-        $this->gateway->execute($httpRequest);
+        try {
+            $result = $this->api->generateDirectProcessRequest($details);
 
-        $postParams = [];
-        parse_str($httpRequest->content, $postParams);
-
-        if (isset($postParams['status'])) {
-            if ($postParams['status'] === 'success') {
+            $status = $result['status'];
+            if ($status['type'] === 'success') {
+                $details['transaction_success'] = true;
                 $details['transaction_captured'] = true;
-            } elseif ($postParams['status'] === 'refused') {
-                $details['transaction_refused'] = true;
-            } elseif ($postParams['status'] === 'error') {
+            } else {
                 $details['transaction_error'] = true;
+                $details['transaction_message'] = $status['message'];
             }
 
-            $details['transaction_message'] = $postParams['message'];
+            $request->setResult((array)$details);
 
-            $this->gateway->execute(new Process($details));
+        } catch (CurabillException $e) {
+            $this->populateDetailsWithError($details, $e, $request);
         }
     }
 
@@ -78,7 +72,7 @@ class AuthorizeAction implements ActionInterface, ApiAwareInterface, GatewayAwar
     public function supports($request)
     {
         return
-            $request instanceof Authorize &&
+            $request instanceof DirectProcess &&
             $request->getModel() instanceof \ArrayAccess;
     }
 }

@@ -2,12 +2,17 @@
 
 namespace DachcomDigital\Payum\Curabill;
 
+use DachcomDigital\Payum\Curabill\Action\Api\CancelAction;
+use DachcomDigital\Payum\Curabill\Action\Api\ConfirmAction;
+use DachcomDigital\Payum\Curabill\Action\Api\DirectProcessAction;
+use DachcomDigital\Payum\Curabill\Action\Api\RefundAction;
 use DachcomDigital\Payum\Curabill\Action\Api\Transformer\InvoiceTransformerAction;
+use DachcomDigital\Payum\Curabill\Action\Api\ProcessAction;
 use DachcomDigital\Payum\Curabill\Action\AuthorizeAction;
 use DachcomDigital\Payum\Curabill\Action\CaptureAction;
-use DachcomDigital\Payum\Curabill\Action\ConvertPaymentAction;
+use DachcomDigital\Payum\Curabill\Action\OffsiteAuthorizeAction;
+use DachcomDigital\Payum\Curabill\Action\OffsiteProcessAction;
 use DachcomDigital\Payum\Curabill\Action\StatusAction;
-use DachcomDigital\Payum\Curabill\Action\Api\ProcessAction;
 use Payum\Core\Bridge\Spl\ArrayObject;
 use Payum\Core\GatewayFactory;
 use Payum\Sofort\Action\SyncAction;
@@ -24,12 +29,18 @@ class CurabillGatewayFactory extends GatewayFactory
             'payum.factory_name'  => 'curabill',
             'payum.factory_title' => 'Curabill E-Commerce',
 
-            'payum.action.capture'         => new CaptureAction(),
-            'payum.action.status'          => new StatusAction(),
-            'payum.action.authorize'       => new AuthorizeAction(),
-            'payum.action.sync'            => new SyncAction(),
+            'payum.action.capture'   => new CaptureAction(),
+            'payum.action.status'    => new StatusAction(),
+            'payum.action.authorize' => new AuthorizeAction(),
+            'payum.action.sync'      => new SyncAction(),
 
             'payum.action.api.process'             => new ProcessAction(),
+            'payum.action.api.direct_process'      => new DirectProcessAction(),
+            'payum.action.api.offsite_capture'     => new OffsiteAuthorizeAction(),
+            'payum.action.api.offsite_process'     => new OffsiteProcessAction(),
+            'payum.action.api.confirm'             => new ConfirmAction(),
+            'payum.action.api.cancel'              => new CancelAction(),
+            'payum.action.api.refund'              => new RefundAction(),
             'payum.action.api.invoice_transformer' => new InvoiceTransformerAction(),
 
         ]);
@@ -42,6 +53,7 @@ class CurabillGatewayFactory extends GatewayFactory
                 'responseToken'    => '',
                 'paymentMethod'    => '',
                 'shopCode'         => '',
+                'processingType'   => '',
                 'sandbox'          => true,
             ];
             $config->defaults($config['payum.default_options']);
@@ -58,6 +70,7 @@ class CurabillGatewayFactory extends GatewayFactory
                         'responseToken'      => $config['responseToken'],
                         'paymentMethod'      => $config['paymentMethod'],
                         'shopCode'           => $config['shopCode'],
+                        'processingType'     => $config['processingType'],
                         'optionalParameters' => isset($config['optionalParameters']) ? $config['optionalParameters'] : []
                     ],
                     $config['payum.http_client'],

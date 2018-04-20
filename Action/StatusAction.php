@@ -20,12 +20,12 @@ class StatusAction implements ActionInterface
 
         $details = ArrayObject::ensureArrayObject($request->getModel());
 
-        if ($details['transaction_processed'] === true) {
+        if ($details['transaction_authorized'] === true) {
             $request->markAuthorized();
             return;
         }
-        if ($details['transaction_success'] === true) {
-            $request->markAuthorized();
+        if ($details['transaction_captured'] === true) {
+            $request->markCaptured();
             return;
         }
         if ($details['transaction_refused'] === true) {
