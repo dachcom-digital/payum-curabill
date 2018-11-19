@@ -51,8 +51,6 @@ class CancelAction implements ActionInterface, GatewayAwareInterface, ApiAwareIn
         try {
             $result = $this->api->generateCancelRequest($details);
 
-            \Pimcore\Logger::log('dings: cancel action', 'info', $result);
-
             $status = $result['status'];
             $details['cancel_status'] = $status['type'];
             $details['cancel_message'] = $status['message'];

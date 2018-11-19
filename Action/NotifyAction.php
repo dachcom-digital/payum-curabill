@@ -42,7 +42,6 @@ class NotifyAction implements ActionInterface, ApiAwareInterface, GatewayAwareIn
         $details['transaction_captured'] = true;
 
         $this->gateway->execute(new Sync($details));
-        \Pimcore\Logger::log('dings: notify action ', 'info', (array)$details);
 
         throw new HttpResponse('OK', 200);
     }
