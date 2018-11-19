@@ -36,6 +36,7 @@ class CancelAction implements ActionInterface, GatewayAwareInterface, ApiAwareIn
 
     /**
      * @param mixed $request
+     *
      * @throws \Payum\Core\Reply\ReplyInterface
      */
     public function execute($request)
@@ -45,16 +46,25 @@ class CancelAction implements ActionInterface, GatewayAwareInterface, ApiAwareIn
         $details = ArrayObject::ensureArrayObject($request->getModel());
         $details->validateNotEmpty(['transaction_token']);
 
+        $details['transaction_cancelled'] = false;
+
         try {
             $result = $this->api->generateCancelRequest($details);
+
+            \Pimcore\Logger::log('dings: cancel action', 'info', $result);
 
             $status = $result['status'];
             $details['cancel_status'] = $status['type'];
             $details['cancel_message'] = $status['message'];
 
+            if ($status['type'] === 'success') {
+                $details['transaction_cancelled'] = true;
+            }
+
             $request->setResult($details);
 
         } catch (CurabillException $e) {
+            $details['transaction_cancelling_failed'] = true;
             $this->populateDetailsWithError($details, $e, $request);
         }
     }

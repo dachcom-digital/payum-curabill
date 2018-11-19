@@ -3,10 +3,9 @@
 namespace DachcomDigital\Payum\Curabill\Action;
 
 use DachcomDigital\Payum\Curabill\Api;
+use DachcomDigital\Payum\Curabill\Request\Api\CheckInvoice;
 use DachcomDigital\Payum\Curabill\Request\Api\DirectProcess;
-use DachcomDigital\Payum\Curabill\Request\Api\OffsiteAuthorize;
 use DachcomDigital\Payum\Curabill\Request\Api\OffsiteProcess;
-use DachcomDigital\Payum\Curabill\Request\Api\Transformer\InvoiceTransformer;
 use Payum\Core\Action\ActionInterface;
 use Payum\Core\ApiAwareInterface;
 use Payum\Core\ApiAwareTrait;
@@ -15,7 +14,6 @@ use Payum\Core\Exception\RequestNotSupportedException;
 use Payum\Core\Exception\UnsupportedApiException;
 use Payum\Core\GatewayAwareInterface;
 use Payum\Core\GatewayAwareTrait;
-use Payum\Core\Model\PaymentInterface;
 use Payum\Core\Request\Capture;
 use Payum\Core\Request\GetHttpRequest;
 use Payum\Core\Security\GenericTokenFactoryAwareInterface;
@@ -47,9 +45,9 @@ class CaptureAction implements ActionInterface, ApiAwareInterface, GatewayAwareI
     }
 
     /**
-     * {@inheritDoc}
+     * @param mixed $request
      *
-     * @param Capture $request
+     * @throws \Exception
      */
     public function execute($request)
     {
@@ -57,43 +55,49 @@ class CaptureAction implements ActionInterface, ApiAwareInterface, GatewayAwareI
 
         $details = ArrayObject::ensureArrayObject($request->getModel());
 
+        // 1. handle off site redirects!
         $this->gateway->execute($httpRequest = new GetHttpRequest());
 
-        if (isset($httpRequest->query['authorize'])) {
-            $details['transaction_success'] = true;
-            $details['transaction_authorized'] = true;
+        if (isset($httpRequest->query['success'])) {
+            $details['transaction_accepted'] = true;
+            if ($this->api->getProcessingType() === Api::PROCESSING_TYPE_REDIRECT_AUTHORIZE) {
+                $details['transaction_captured'] = false;
+            }
             return;
         } elseif (isset($httpRequest->query['cancel'])) {
-            $details['transaction_cancel'] = true;
+            $details['transaction_cancelled'] = true;
             return;
         } elseif (isset($httpRequest->query['error'])) {
-            $details['transaction_error'] = true;
-            return;
-        } elseif (isset($httpRequest->query['success'])) {
-            $details['transaction_success'] = true;
+            $details['transaction_general_error'] = true;
             return;
         }
 
-        /** @var $payment PaymentInterface */
-        $payment = $request->getFirstModel();
+        // 2. authorize payment
+        if (!isset($details['transaction_authorized'])) {
+            $this->gateway->execute($invoiceCheckRequest = new CheckInvoice($request->getFirstModel()));
+            $details->replace($invoiceCheckRequest->getResult());
+        }
 
-        $transformCustomer = new InvoiceTransformer($payment);
-        $transformCustomer->setDocumentType($this->api->getPaymentMethod());
-        $this->gateway->execute($transformCustomer);
+        // 3. do not process data if authorized was unsuccessfully.
+        if (
+            (isset($details['transaction_authorization_failed']) && $details['transaction_authorization_failed'] === true) ||
+            (isset($details['transaction_authorized']) && $details['transaction_authorized'] === false)
+        ) {
+            return;
+        }
 
-        $details['invoice'] = base64_encode($this->api->generateInvoiceXml($transformCustomer));
-        $details['transaction_token'] = $payment->getNumber();
-
-        if ($this->api->getProcessingType() === Api::PROCESSING_TYPE_REDIRECT_DIRECT) {
-            $api = new OffsiteProcess($details);
-            $api->setToken($request->getToken());
-            $this->gateway->execute($api);
-        } elseif ($this->api->getProcessingType() === Api::PROCESSING_TYPE_REDIRECT_MANUALLY) {
-            $api = new OffsiteAuthorize($details);
-            $api->setToken($request->getToken());
-            $this->gateway->execute($api);
-        } elseif ($this->api->getProcessingType() === Api::PROCESSING_TYPE_DIRECT) {
+        // 4. check internal processes
+        if (in_array($this->api->getProcessingType(), [Api::PROCESSING_TYPE_DIRECT_AUTHORIZE, Api::PROCESSING_TYPE_DIRECT_PROCESS])) {
             $this->gateway->execute(new DirectProcess($details));
+            return;
+        }
+
+        // 5. check off site processes
+        if (in_array($this->api->getProcessingType(), [Api::PROCESSING_TYPE_REDIRECT_AUTHORIZE, Api::PROCESSING_TYPE_REDIRECT_PROCESS])) {
+            $offSiteProcessAction = new OffsiteProcess($details);
+            $offSiteProcessAction->setToken($request->getToken());
+            $this->gateway->execute($offSiteProcessAction);
+            return;
         }
     }
 

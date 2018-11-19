@@ -27,26 +27,23 @@ class Api
 
     const PRODUCTION = 'production';
 
-    const REDIRECT_TYPE_IMMEDIATE = 'immediate';
+    const PROCESSING_IMMEDIATE = 'immediate';
+    const PROCESSING_DEFERRED = 'deferred';
 
-    const REDIRECT_TYPE_DEFERRED = 'deferred';
-
-    const PROCESSING_TYPE_DIRECT = 'direct_process';
-
-    const PROCESSING_TYPE_REDIRECT_DIRECT = 'redirect_process';
-
-    const PROCESSING_TYPE_REDIRECT_MANUALLY = 'manually_process';
+    const PROCESSING_TYPE_DIRECT_AUTHORIZE = 'direct_authorize';
+    const PROCESSING_TYPE_DIRECT_PROCESS = 'direct_process';
+    const PROCESSING_TYPE_REDIRECT_AUTHORIZE = 'redirect_authorize';
+    const PROCESSING_TYPE_REDIRECT_PROCESS = 'redirect_process';
 
     protected $options = [
-        'environment'         => self::TEST,
-        'username'            => null,
-        'transactionToken'    => null,
-        'responseToken'       => null,
-        'paymentMethod'       => 'invoice',
-        'shopCode'            => null,
-        'useDirectProcessing' => false,
-        'processingType'      => self::PROCESSING_TYPE_DIRECT,
-        'optionalParameters'  => []
+        'environment'        => self::TEST,
+        'username'           => null,
+        'transactionToken'   => null,
+        'responseToken'      => null,
+        'paymentMethod'      => 'invoice',
+        'shopCode'           => null,
+        'processingType'     => self::PROCESSING_TYPE_DIRECT_PROCESS,
+        'optionalParameters' => []
     ];
 
     /**
@@ -86,15 +83,8 @@ class Api
     }
 
     /**
-     * @return string
-     */
-    public function useDirectProcessing()
-    {
-        return $this->options['useDirectProcessing'] === true;
-    }
-
-    /**
      * @param InvoiceTransformer $invoiceTransformer
+     *
      * @return mixed
      */
     public function generateInvoiceXml(InvoiceTransformer $invoiceTransformer)
@@ -111,21 +101,6 @@ class Api
     public function getProcessingType()
     {
         return $this->options['processingType'];
-    }
-
-    /**
-     * @return string
-     * @throws \Exception
-     */
-    public function getRedirectType()
-    {
-        if ($this->getProcessingType() === self::PROCESSING_TYPE_REDIRECT_DIRECT) {
-            return self::REDIRECT_TYPE_IMMEDIATE;
-        } elseif ($this->getProcessingType() === self::PROCESSING_TYPE_REDIRECT_MANUALLY) {
-            return self::REDIRECT_TYPE_DEFERRED;
-        } else {
-            throw new \Exception(sprintf('invalid processingType. valid types: %s, %s', self::PROCESSING_TYPE_REDIRECT_DIRECT, self::PROCESSING_TYPE_REDIRECT_MANUALLY));
-        }
     }
 
     /**
@@ -155,6 +130,16 @@ class Api
     public function getCaptureUrl()
     {
         $path = '/services/invoice/capture';
+        return $this->getProviderHost() . $path;
+    }
+
+    /**
+     * @return string
+     * @throws \Exception
+     */
+    public function getCheckUrl()
+    {
+        $path = '/services/invoice/check';
         return $this->getProviderHost() . $path;
     }
 
@@ -205,12 +190,39 @@ class Api
 
     /**
      * @param ArrayObject $details
+     *
      * @return array
      * @throws CurabillException
      */
-    public function generateDirectProcessRequest(ArrayObject $details)
+    public function generateInvoiceCheckRequest(ArrayObject $details)
     {
         $params = [
+            'invoice'           => $details['invoice'],
+            'transaction_token' => $details['transaction_token']
+        ];
+
+        $this->addGlobalParams($params);
+
+        try {
+            $response = $this->doRequest($this->getCheckUrl(), $params);
+        } catch (\Exception $e) {
+            throw new CurabillException($e->getMessage());
+        }
+
+        return $response;
+    }
+
+    /**
+     * @param ArrayObject $details
+     * @param string      $processingType
+     *
+     * @return array
+     * @throws CurabillException
+     */
+    public function generateDirectProcessRequest(ArrayObject $details, $processingType = self::PROCESSING_IMMEDIATE)
+    {
+        $params = [
+            'processing'        => $processingType,
             'invoice'           => $details['invoice'],
             'transaction_token' => $details['transaction_token']
         ];
@@ -228,6 +240,7 @@ class Api
 
     /**
      * @param ArrayObject $details
+     *
      * @return array
      * @throws CurabillException
      */
@@ -250,6 +263,7 @@ class Api
 
     /**
      * @param ArrayObject $details
+     *
      * @return array
      * @throws CurabillException
      */
@@ -272,6 +286,7 @@ class Api
 
     /**
      * @param ArrayObject $details
+     *
      * @return array
      * @throws CurabillException
      */
@@ -338,6 +353,7 @@ class Api
     /**
      * @param array $data
      * @param       $token
+     *
      * @return string
      */
     public function createShaHash(array $data, $token)
@@ -360,6 +376,7 @@ class Api
 
     /**
      * @param $value
+     *
      * @return string
      */
     public function stringValue($value)

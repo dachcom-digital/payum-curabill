@@ -5,7 +5,6 @@ namespace DachcomDigital\Payum\Curabill\Action\Api;
 use DachcomDigital\Payum\Curabill\Api;
 use DachcomDigital\Payum\Curabill\Exception\CurabillException;
 use DachcomDigital\Payum\Curabill\Request\Api\DirectProcess;
-use DachcomDigital\Payum\Curabill\Request\Api\Transformer\InvoiceTransformer;
 use Payum\Core\Action\ActionInterface;
 use Payum\Core\ApiAwareInterface;
 use Payum\Core\Bridge\Spl\ArrayObject;
@@ -13,8 +12,6 @@ use Payum\Core\Exception\RequestNotSupportedException;
 use Payum\Core\Exception\UnsupportedApiException;
 use Payum\Core\GatewayAwareInterface;
 use Payum\Core\GatewayAwareTrait;
-use Payum\Core\Model\PaymentInterface;
-use Payum\Core\Request\Sync;
 
 class DirectProcessAction implements ActionInterface, GatewayAwareInterface, ApiAwareInterface
 {
@@ -38,8 +35,9 @@ class DirectProcessAction implements ActionInterface, GatewayAwareInterface, Api
     }
 
     /**
-     * @param DirectProcess $request
-     * @throws \Payum\Core\Reply\ReplyInterface
+     * @param mixed $request
+     *
+     * @throws \Exception
      */
     public function execute($request)
     {
@@ -47,21 +45,32 @@ class DirectProcessAction implements ActionInterface, GatewayAwareInterface, Api
 
         $details = ArrayObject::ensureArrayObject($request->getModel());
 
-        try {
-            $result = $this->api->generateDirectProcessRequest($details);
+        $details['transaction_accepted'] = false;
+        $details['transaction_captured'] = false;
 
-            $status = $result['status'];
-            if ($status['type'] === 'success') {
-                $details['transaction_success'] = true;
-                $details['transaction_captured'] = true;
+        try {
+
+            if ($this->api->getProcessingType() === Api::PROCESSING_TYPE_DIRECT_PROCESS) {
+                $result = $this->api->generateDirectProcessRequest($details, Api::PROCESSING_IMMEDIATE);
             } else {
-                $details['transaction_error'] = true;
-                $details['transaction_message'] = $status['message'];
+                $result = $this->api->generateDirectProcessRequest($details, Api::PROCESSING_DEFERRED);
             }
 
-            $request->setResult((array)$details);
+            $status = $result['status'];
+            $details['process_status'] = $status['type'];
+            $details['process_message'] = $status['message'];
+
+            if ($status['type'] === 'success') {
+                $details['transaction_accepted'] = true;
+                if ($this->api->getProcessingType() === Api::PROCESSING_TYPE_DIRECT_PROCESS) {
+                    $details['transaction_captured'] = true;
+                }
+            }
+
+            $request->setResult($details);
 
         } catch (CurabillException $e) {
+            $details['transaction_processing_failed'] = true;
             $this->populateDetailsWithError($details, $e, $request);
         }
     }

@@ -4,7 +4,8 @@ namespace DachcomDigital\Payum\Curabill\Action\Api;
 
 use DachcomDigital\Payum\Curabill\Api;
 use DachcomDigital\Payum\Curabill\Exception\CurabillException;
-use DachcomDigital\Payum\Curabill\Request\Api\Refund;
+use DachcomDigital\Payum\Curabill\Request\Api\CheckInvoice;
+use DachcomDigital\Payum\Curabill\Request\Api\Transformer\InvoiceTransformer;
 use Payum\Core\Action\ActionInterface;
 use Payum\Core\ApiAwareInterface;
 use Payum\Core\Bridge\Spl\ArrayObject;
@@ -13,9 +14,8 @@ use Payum\Core\Exception\UnsupportedApiException;
 use Payum\Core\GatewayAwareInterface;
 use Payum\Core\GatewayAwareTrait;
 use Payum\Core\Model\PaymentInterface;
-use Payum\Core\Request\GetCurrency;
 
-class RefundAction implements ActionInterface, GatewayAwareInterface, ApiAwareInterface
+class CheckInvoiceAction implements ActionInterface, GatewayAwareInterface, ApiAwareInterface
 {
     use GatewayAwareTrait;
     use CurabillAwareTrait;
@@ -37,45 +37,44 @@ class RefundAction implements ActionInterface, GatewayAwareInterface, ApiAwareIn
     }
 
     /**
-     * {@inheritDoc}
+     * @param CheckInvoice $request
      *
-     * @param Refund $request
+     * @throws \Payum\Core\Reply\ReplyInterface
      */
     public function execute($request)
     {
         RequestNotSupportedException::assertSupports($this, $request);
 
         $details = ArrayObject::ensureArrayObject($request->getModel());
-        $details->validateNotEmpty(['transaction_token', 'invoice', 'deliveryMethod']);
 
-        /** @var PaymentInterface $payment */
+        /** @var $payment PaymentInterface */
         $payment = $request->getFirstModel();
 
-        $this->gateway->execute($currency = new GetCurrency($payment->getCurrencyCode()));
-        $divisor = pow(10, $currency->exp);
+        $transformCustomer = new InvoiceTransformer($payment);
+        $transformCustomer->setDocumentType($this->api->getPaymentMethod());
+        $this->gateway->execute($transformCustomer);
 
-        $details['reason'] = $payment->getDescription();
-        $details['refund_id'] = $payment->getNumber();
-        $details['amount'] = (float)$payment->getTotalAmount() / $divisor;
-
-        $details['transaction_refunded'] = false;
+        $details['invoice'] = base64_encode($this->api->generateInvoiceXml($transformCustomer));
+        $details['transaction_token'] = $payment->getNumber();
+        $details['transaction_authorized'] = false;
 
         try {
-            $result = $this->api->generateRefundRequest($details);
+            $result = $this->api->generateInvoiceCheckRequest($details);
 
             $status = $result['status'];
-            $details['refund_status'] = $status['type'];
-            $details['refund_message'] = $status['message'];
+            $details['authorize_status'] = $status['type'];
+            $details['authorize_message'] = $status['message'];
 
             if ($status['type'] === 'success') {
-                $details['transaction_refunded'] = true;
+                $details['transaction_authorized'] = true;
             }
 
             $request->setResult($details);
 
         } catch (CurabillException $e) {
-            $details['transaction_refunding_failed'] = true;
+            $details['transaction_authorization_failed'] = true;
             $this->populateDetailsWithError($details, $e, $request);
+            $request->setResult($details);
         }
     }
 
@@ -85,7 +84,7 @@ class RefundAction implements ActionInterface, GatewayAwareInterface, ApiAwareIn
     public function supports($request)
     {
         return
-            $request instanceof Refund &&
+            $request instanceof CheckInvoice &&
             $request->getModel() instanceof \ArrayAccess;
     }
 }

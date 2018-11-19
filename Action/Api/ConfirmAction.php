@@ -46,6 +46,8 @@ class ConfirmAction implements ActionInterface, GatewayAwareInterface, ApiAwareI
         $details = ArrayObject::ensureArrayObject($request->getModel());
         $details->validateNotEmpty(['transaction_token', 'invoice']);
 
+        $details['transaction_captured'] = false;
+
         try {
             $result = $this->api->generateConfirmRequest($details);
 
@@ -53,9 +55,14 @@ class ConfirmAction implements ActionInterface, GatewayAwareInterface, ApiAwareI
             $details['confirm_status'] = $status['type'];
             $details['confirm_message'] = $status['message'];
 
+            if ($status['type'] === 'success') {
+                $details['transaction_captured'] = true;
+            }
+
             $request->setResult($details);
 
         } catch (CurabillException $e) {
+            $details['transaction_confirm_failed'] = true;
             $this->populateDetailsWithError($details, $e, $request);
         }
     }
